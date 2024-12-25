@@ -13,7 +13,7 @@ double k_main(double x, double xi)
 	}
 	else
 	{
-		return 2;
+		return 2.0;
 	}
 }
 
@@ -73,7 +73,7 @@ double f_test(double x, double xi)
 	}
 	else
 	{
-		return sqrt(2.0) / 2;
+		return sqrt(2.0) / 2.0;
 	}
 }
 
@@ -104,25 +104,27 @@ vector<double> solveMatrix(vector<double> A, vector<double>& C, vector<double> B
 
 vector<double> calc_true_sol(double levGran, double pravGran, double xi, double n)
 {
-	const double C1 = -0.2512338358800897;
-	const double C2 = -0.5493987964341227;
-	const double C3 = -0.09925199591055987;
-	const double C4 = 0.046413492642686384;
+	const double C1 = -0.08535083927882968;
+	const double C2 = -0.1878887054563331;
+	const double C3 = -0.06458646809488457;
+	const double C4 = -0.05884998237112708;
 
 	vector<double> trueSol(n+1);
 	double h = (pravGran - levGran) / n;
 	int i = 0;
-	 
+	double x = 0;
 
-	while(levGran + h*i < xi)
+	while(x < xi)
 	{
-		trueSol[i] = C1 * exp((sqrt(M_PI) / 2.0) * (levGran + h * i)) + C2 * exp((-sqrt(M_PI) / 2.0) * (levGran + h * i)) + (4.0 * sqrt(2.0)) / M_PI;
+		trueSol[i] = C1 * exp((sqrt(M_PI) / 2.0) * x) + C2 * exp((-sqrt(M_PI) / 2.0) * x) + 4.0 / M_PI;
 		i++;
+		x += h;
 	}
 
 	for (; i < n + 1; i++)
 	{
-		trueSol[i] = C3 * exp((M_PI / (4.0 * sqrt(2.0))) * (levGran + h * i)) + C4 * exp((-M_PI / (4.0 * sqrt(2.0))) * (levGran + h * i)) + (8.0 * sqrt(2.0)) / (M_PI * M_PI);
+		trueSol[i] = C3 * exp((M_PI * sqrt(2.0) / 8) * x) + C4 * exp(-(M_PI * sqrt(2.0) / 8) * x) + (8.0 * sqrt(2.0)) / (M_PI * M_PI);
+		x += h;
 	}
 	return trueSol;
 
@@ -140,7 +142,7 @@ public:
 	vector<double> v; //численное решение
 	vector<double> v2; //либо истинное, либо основное с большой сеткой
 	vector<double> diff; //разница между vi и v2i
-	Scheme(double mu1 = 1.0, double mu2 = 1.0, double xi = M_PI / 4, double a = 0.0, double b = 1.0) :mu1(mu1), mu2(mu2), xi(xi), levGran(a), pravGran(b)
+	Scheme(double mu1 = 1.0, double mu2 = 1.0, double xi = (M_PI / 4.0), double a = 0.0, double b = 1.0) :mu1(mu1), mu2(mu2), xi(xi), levGran(a), pravGran(b)
 	{
 	}
 	void calculate_test(int n)
@@ -157,13 +159,31 @@ public:
 		double h = (pravGran - levGran) / n;
 		for (int i = 0; i < n; i++)
 		{
-			a.push_back(1 / ((1 / k_test(levGran + h * i, xi) + k_test(levGran + h * (i + 1.0), xi)) / 2));
+			if (levGran + h * i <= xi && levGran + h * (i + 1.0) >= xi)
+			{
+				a.push_back(1 / ((1/h)*((((1 / k_test(levGran + h * i, xi) + 1 / k_test(xi - 0.00000000001, xi)) / 2) *  (xi - (levGran + h * i)) 
+					+ ((1 / k_test(xi + 0.00000000001, xi) + 1 / k_test(levGran + h * (i + 1.0), xi)) / 2) * (levGran + h * (i + 1.0) - xi)))));
+			}
+			else
+			{
+				a.push_back(1 / ((1 / k_test(levGran + h * i, xi) + 1 / k_test(levGran + h * (i + 1.0), xi)) / 2));
+			}
 		}
 
 		for (int i = 0; i < n - 1; i++)
 		{
-			phi.push_back((f_test(levGran + h * (i + 0.5), xi) + f_test(levGran + h * (i + 1.5), xi)) / 2);
-			d.push_back((q_test(levGran + h * (i + 0.5), xi) + q_test(levGran + h * (i + 1.5), xi)) / 2);
+			if ((levGran + h * (i + 0.5)) <= xi && (levGran + h * (i + 1.5)) >= xi)
+			{
+				phi.push_back((1 / h) * ((((f_test(levGran + h * (i + 0.5), xi) + f_test(xi - 0.00000000001, xi)) / 2) * (xi - (levGran + h * (i + 0.5)))) +
+					(((f_test(levGran + h * (i + 1.5), xi) + f_test(xi + 0.00000000001, xi)) / 2) * (levGran + h * (i + 1.5) - xi))));
+				d.push_back((1 / h) * ((((q_test(levGran + h * (i + 0.5), xi) + q_test(xi - 0.00000000001, xi)) / 2) * (xi - (levGran + h * (i + 0.5)))) +
+					(((q_test(levGran + h * (i + 1.5), xi) + q_test(xi + 0.00000000001, xi)) / 2) * ((levGran + h * (i + 1.5)) - xi))));
+			}
+			else
+			{
+				phi.push_back((f_test(levGran + h * (i + 0.5), xi) + f_test(levGran + h * (i + 1.5), xi)) / 2);
+				d.push_back((q_test(levGran + h * (i + 0.5), xi) + q_test(levGran + h * (i + 1.5), xi)) / 2);
+			}
 		}
 
 		vector<double> A;
@@ -205,20 +225,53 @@ public:
 		double h2 = (pravGran - levGran) / (2.0*n);
 		for (int i = 0; i < n; i++)
 		{
-			a1.push_back(1 / ((1 / k_main(levGran + h1 * i, xi) + k_main(levGran + h1 * (i + 1.0), xi)) / 2));
+			if (levGran + h1 * i <= xi && levGran + h1 * (i + 1.0) >= xi)
+			{
+				a1.push_back(1 / ((1 / h1) * ((((1 / k_test(levGran + h1 * i, xi) + 1 / k_test(xi - 0.00000000001, xi)) / 2) * (xi - (levGran + h1 * i))
+					+ ((1 / k_test(xi + 0.00000000001, xi) + 1 / k_test(levGran + h1 * (i + 1.0), xi)) / 2) * (levGran + h1 * (i + 1.0) - xi)))));
+			}
+			else
+			{
+				a1.push_back(1 / ((1 / k_test(levGran + h1 * i, xi) + 1 / k_test(levGran + h1 * (i + 1.0), xi)) / 2));
+			}
 		}
 		for (int i = 0; i < 2*n; i++)
 		{
-			a2.push_back(1 / ((1 / k_main(levGran + h2 * i, xi) + k_main(levGran + h2 * (i + 1.0), xi)) / 2));
+			if (levGran + h2 * i <= xi && levGran + h2 * (i + 1.0) >= xi)
+			{
+				a2.push_back(1 / ((1 / h2) * ((((1 / k_test(levGran + h2 * i, xi) + 1 / k_test(xi - 0.00000000001, xi)) / 2) * (xi - (levGran + h2 * i))
+					+ ((1 / k_test(xi + 0.00000000001, xi) + 1 / k_test(levGran + h2 * (i + 1.0), xi)) / 2) * (levGran + h2 * (i + 1.0) - xi)))));
+			}
+			else
+			{
+				a2.push_back(1 / ((1 / k_test(levGran + h2 * i, xi) + 1 / k_test(levGran + h2 * (i + 1.0), xi)) / 2));
+			}
 		}
 
 		for (int i = 0; i < n - 1; i++)
 		{
-			phi1.push_back((f_main(levGran + h1 * (i + 0.5), xi) + f_main(levGran + h1 * (i + 1.5), xi)) / 2);
-			d1.push_back((q_main(levGran + h1 * (i + 0.5), xi) + q_main(levGran + h1 * (i + 1.5), xi)) / 2);
+			if ((levGran + h1 * (i + 0.5)) <= xi && (levGran + h1 * (i + 1.5)) >= xi)
+			{
+				phi1.push_back((1 / h1) * ((((f_test(levGran + h1 * (i + 0.5), xi) + f_test(xi - 0.00000000001, xi)) / 2) * (xi - (levGran + h1 * (i + 0.5)))) +
+					(((f_test(levGran + h1 * (i + 1.5), xi) + f_test(xi + 0.00000000001, xi)) / 2) * (levGran + h1 * (i + 1.5) - xi))));
+				d1.push_back((1 / h1) * ((((q_test(levGran + h1 * (i + 0.5), xi) + q_test(xi - 0.00000000001, xi)) / 2) * (xi - (levGran + h1 * (i + 0.5)))) +
+					(((q_test(levGran + h1 * (i + 1.5), xi) + q_test(xi + 0.00000000001, xi)) / 2) * ((levGran + h1 * (i + 1.5)) - xi))));
+			}
+			else
+			{
+				phi1.push_back((f_main(levGran + h1 * (i + 0.5), xi) + f_main(levGran + h1 * (i + 1.5), xi)) / 2);
+				d1.push_back((q_main(levGran + h1 * (i + 0.5), xi) + q_main(levGran + h1 * (i + 1.5), xi)) / 2);
+			}
 		}
 		for (int i = 0; i < 2*n - 1; i++)
 		{
+			if ((levGran + h2 * (i + 0.5)) <= xi && (levGran + h2 * (i + 1.5)) >= xi)
+			{
+				phi2.push_back((1 / h2) * ((((f_test(levGran + h2 * (i + 0.5), xi) + f_test(xi - 0.00000000001, xi)) / 2) * (xi - (levGran + h2 * (i + 0.5)))) +
+					(((f_test(levGran + h2 * (i + 1.5), xi) + f_test(xi + 0.00000000001, xi)) / 2) * (levGran + h2 * (i + 1.5) - xi))));
+				d2.push_back((1 / h2) * ((((q_test(levGran + h2 * (i + 0.5), xi) + q_test(xi - 0.00000000001, xi)) / 2) * (xi - (levGran + h2 * (i + 0.5)))) +
+					(((q_test(levGran + h2 * (i + 1.5), xi) + q_test(xi + 0.00000000001, xi)) / 2) * ((levGran + h2 * (i + 1.5)) - xi))));
+			}
 			phi2.push_back((f_main(levGran + h2 * (i + 0.5), xi) + f_main(levGran + h2 * (i + 1.5), xi)) / 2);
 			d2.push_back((q_main(levGran + h2 * (i + 0.5), xi) + q_main(levGran + h2 * (i + 1.5), xi)) / 2);
 		}
